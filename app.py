@@ -6,8 +6,7 @@ app = Flask(__name__)
 # Define la ruta principal (página de inicio)
 @app.route('/')
 def home():
-    username = "Marta"
-    return render_template('index.html', username=username)
+    return render_template('index.html')
 
 # Ejecuta el servidor de desarrollo
 if __name__ == '__main__':

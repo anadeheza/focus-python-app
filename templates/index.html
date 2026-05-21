@@ -8,19 +8,55 @@
 </head>
 <body>
 
-    <div class="container">
-        <h1>aaa</h1>
-        <p class="tagline">bbb</p>
 
-        <div id="timer">25:00</div>
+    <div id="start-screen">
+        <div class="start-content">
+            <h1>Focus Zone</h1>
+            <p class="blink">Press Enter to start</p>
+        </div>
+    </div>
 
-        <div class="controls">
-            <button id="start">Start</button>
-            <button id="reset">Reset</button>
+    <div id="focus-app">
+        <audio id="bell-music">
+            <source src="{{ url_for('static', filename='bell.mp3') }}" type="audio/mpeg">
+        </audio>
+
+        <audio id="bg-music" loop>
+            <source src="{{ url_for('static', filename='music.mp3') }}" type="audio/mpeg">
+        </audio>
+
+        <video autoplay muted loop playsinline id="myVideo">
+            <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+        </video>
+
+        <div class="container">
+            <div id="timer">25:00</div>
+
+            <div class="controls">
+                <button id="start">Start</button>
+                <button id="reset">Reset</button>
+            </div>
+        </div>
+
+        <div id="alert" class="hidden">
+            <div class="content">
+                <p id="message">message</p>
+                <button id="close">🗙</button>
+            </div>
         </div>
     </div>
 
     <script>
+        const startScreen = document.getElementById('start-screen')
+        const appContainer = document.getElementById('focus-app')
+        const bgMusic = document.getElementById('bg-music');
+        const bellMusic = document.getElementById('bell-music');
+
+        window.addEventListener('keydown', function(event) {
+            if(event.key === 'Enter' || event.keyCode === 13) {
+                startScreen.classList.add('fade-out');
+            }
+        })
         let timeleft = 25 * 60
         let timerId = null 
 
@@ -37,13 +73,21 @@
         function startTimer() {
             if(timerId === null) {
                 startBtn.textContent = 'Stop'
+
+                bgMusic.volume = 0.3; 
+                bgMusic.play().catch(error => {
+                    console.log("Audio play was blocked or interrupted:", error);
+                });
+
                 timerId = setInterval(() => {
                     if(timeleft > 0) {
                         timeleft --
                         updateDisplay()
                     } else {
                         clearInterval(timerId)
-                        alert("Times's up!")
+                        showMessage("Times's up!")
+                        bellMusic.volume = 0.3
+                        bellMusic.play()
                         resetTimer()
                     }
                 }, 1000);
@@ -51,6 +95,8 @@
                 clearInterval(timerId)
                 timerId = null 
                 startBtn.textContent = 'Start'
+
+                bgMusic.pause()
             }
         }
 
@@ -60,8 +106,23 @@
             timeleft = 25 * 60 
             updateDisplay()
             startBtn.textContent = 'Start'
+
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
         }
 
+        const aalert = document.getElementById('alert')
+        const message = document.getElementById('message')
+        const closeBtn = document.getElementById('close')
+
+        function showMessage(text) {
+            message.textContent = text
+            aalert.classList.remove('hidden')
+        }
+
+        closeBtn.addEventListener('click', () => {
+            aalert.classList.add('hidden')
+        })
         startBtn.addEventListener('click', startTimer)
         resetBtn.addEventListener('click', resetTimer)
     </script>
