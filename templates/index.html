@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus time</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="container">
+        <h1>aaa</h1>
+        <p class="tagline">bbb</p>
+
+        <div id="timer">25:00</div>
+
+        <div class="controls">
+            <button id="start">Start</button>
+            <button id="reset">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        let timeleft = 25 * 60
+        let timerId = null 
+
+        const timerDisplay = document.getElementById('timer')
+        const startBtn = document.getElementById('start')
+        const resetBtn = document.getElementById('reset')
+
+        function updateDisplay() {
+            const mins = Math.floor(timeleft / 60)
+            const secs = timeleft % 60 
+            timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+        }
+
+        function startTimer() {
+            if(timerId === null) {
+                startBtn.textContent = 'Stop'
+                timerId = setInterval(() => {
+                    if(timeleft > 0) {
+                        timeleft --
+                        updateDisplay()
+                    } else {
+                        clearInterval(timerId)
+                        alert("Times's up!")
+                        resetTimer()
+                    }
+                }, 1000);
+            } else {
+                clearInterval(timerId)
+                timerId = null 
+                startBtn.textContent = 'Start'
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerId)
+            timerId = null
+            timeleft = 25 * 60 
+            updateDisplay()
+            startBtn.textContent = 'Start'
+        }
+
+        startBtn.addEventListener('click', startTimer)
+        resetBtn.addEventListener('click', resetTimer)
+    </script>
+    
+</body>
+</html>
