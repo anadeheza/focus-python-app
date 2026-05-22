@@ -27,8 +27,7 @@ With 3 different background options, a sounds mixer, with adjustable volume for 
 ### "Study Buddy "
 Study Buddy is an AI Assistant that will help you with any doubt you may have and encourage you to keep your focus after a session.
 
->The assistant may take some time to answer since it is linked to a local ollama API
-
+>The AI bot is linked to a Gemini API
 
 ## Why this?
 I made this principally to get t know how to make customizable backgrounds and sound effects.

@@ -4,9 +4,11 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
+API_KEY = os.environ.get("GEMINI_API_KEY")
+
 client = OpenAI(
-    base_url="http://localhost:11434/v1",
-    api_key="ollama"
+    api_key=API_KEY,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
 @app.route('/')
@@ -23,7 +25,7 @@ def chat():
             return jsonify({'error': 'Message is empty'}), 400
 
         response = client.chat.completions.create(
-            model="llama3",  
+            model="gemini-3.5-flash",  
             messages=[
                 {"role": "system", "content": "You are a helpful, concise AI study and work assistant inside a focus timer app. Give actionable, clear, and encouraging advice for studying, coding, or managing tasks."},
                 {"role": "user", "content": user_message}
@@ -46,7 +48,7 @@ def summary():
             prompt = "The user just finished a 25-minute focus session, but didn't check off any tasks. Write a short, encouraging message congratulating them on completing the focus block itself and boosting their stamina."
 
         response = client.chat.completions.create(
-            model="llama3",  
+            model="gemini-3.5-flash",  
             messages=[
                 {
                     "role": "system", 
