@@ -8,7 +8,6 @@
 </head>
 <body>
 
-
     <div id="start-screen">
         <div class="start-content">
             <h1>Focus Zone</h1>
@@ -16,22 +15,73 @@
         </div>
     </div>
 
-    <div id="focus-app">
-        <audio id="bell-music">
-            <source src="{{ url_for('static', filename='bell.mp3') }}" type="audio/mpeg">
-        </audio>
+    <button id="toggle-tasks-btn" class="sidebar-trigger tab-left">Tasks</button>
+    <button id="toggle-ai-btn" class="sidebar-trigger tab-right">Study Buddy</button>
 
-        <audio id="bg-music" loop>
-            <source src="{{ url_for('static', filename='music.mp3') }}" type="audio/mpeg">
-        </audio>
+    <div id="task-sidebar" class="side-panel panel-left">
+        <div class="panel-header">
+            <h2>Dashboard</h2>
+            <button class="close-panel-btn" id="close-tasks-btn">✕</button>
+        </div>
+        <div class="panel-body">
+            <div class="task-input-row">
+                <input type="text" id="task-input" placeholder="⊹ ࣪ ﹏𓊝﹏𓂁﹏ ࣪ ˖">
+                <button id="add-task-btn">╋</button>
+            </div>
+            <ul id="task-list"></ul>
+
+            <div class="customization-section">
+                <h3>Select Theme</h3>
+                <select id="bg-selector">
+                    <option value="chimney.mp4">Cozy Chimney</option>
+                    <option value="vinyl.mp4">Retro Vinyl</option>
+                    <option value="pixel-room.mp4">Pixel Room</option>
+                </select>
+            </div>
+
+            <div class="customization-section">
+                <h3>Ambient Mixer</h3>
+                <div class="mixer-row">
+                    <label>Rain</label>
+                    <input type="range" id="volume-rain" min="0" max="1" step="0.1" value="0">
+                </div>
+                <div class="mixer-row">
+                    <label>Cafe</label>
+                    <input type="range" id="volume-cafe" min="0" max="1" step="0.1" value="0">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ai-sidebar" class="side-panel panel-right">
+        <div class="panel-header">
+            <h2>Study Buddy</h2>
+            <button class="close-panel-btn" id="close-ai-btn">✕</button>
+        </div>
+        <div class="panel-body">
+            <div id="ai-chat-output" class="chat-output">
+                <div class="ai-msg">Hey! What can i help you with today??</div>
+            </div>
+            <div class="chat-input-row">
+                <input type="text" id="ai-input" placeholder="𓆝 𓆟 𓆞 𓆝 𓆟">
+                <button id="ai-send-btn">ᯓ➤</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="focus-app">
+        <audio id="bell-music"><source src="{{ url_for('static', filename='bell.mp3') }}" type="audio/mpeg"></audio>
+        <audio id="bg-music" loop><source src="{{ url_for('static', filename='music.mp3') }}" type="audio/mpeg"></audio>
+        
+        <audio id="amb-rain" loop><source src="{{ url_for('static', filename='rain.mp3') }}" type="audio/mpeg"></audio>
+        <audio id="amb-cafe" loop><source src="{{ url_for('static', filename='cafe.mp3') }}" type="audio/mpeg"></audio>
 
         <video autoplay muted loop playsinline id="myVideo">
-            <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+            <source src="{{ url_for('static', filename='chimney.mp4') }}" type="video/mp4">
         </video>
 
         <div class="container">
             <div id="timer">25:00</div>
-
             <div class="controls">
                 <button id="start">Start</button>
                 <button id="reset">Reset</button>
@@ -57,6 +107,10 @@
                 startScreen.classList.add('fade-out');
             }
         })
+
+        window.addEventListener('click', function(event) {
+            startScreen.classList.add('fade-out');
+        })
         let timeleft = 25 * 60
         let timerId = null 
 
@@ -79,6 +133,8 @@
                     console.log("Audio play was blocked or interrupted:", error);
                 });
 
+                playAmbientTracks();
+
                 timerId = setInterval(() => {
                     if(timeleft > 0) {
                         timeleft --
@@ -88,6 +144,9 @@
                         showMessage("Times's up!")
                         bellMusic.volume = 0.3
                         bellMusic.play()
+
+                        fetchAISessionSummary();
+
                         resetTimer()
                     }
                 }, 1000);
@@ -95,8 +154,8 @@
                 clearInterval(timerId)
                 timerId = null 
                 startBtn.textContent = 'Start'
-
                 bgMusic.pause()
+                pauseAmbientTracks();
             }
         }
 
@@ -109,6 +168,7 @@
 
             bgMusic.pause();
             bgMusic.currentTime = 0;
+            pauseAmbientTracks();
         }
 
         const aalert = document.getElementById('alert')
@@ -125,6 +185,187 @@
         })
         startBtn.addEventListener('click', startTimer)
         resetBtn.addEventListener('click', resetTimer)
+
+        const taskSidebar = document.getElementById('task-sidebar');
+        const aiSidebar = document.getElementById('ai-sidebar');
+        
+        document.getElementById('toggle-tasks-btn').addEventListener('click', () => taskSidebar.classList.add('open'));
+        document.getElementById('close-tasks-btn').addEventListener('click', () => taskSidebar.classList.remove('open'));
+        
+        document.getElementById('toggle-ai-btn').addEventListener('click', () => aiSidebar.classList.add('open'));
+        document.getElementById('close-ai-btn').addEventListener('click', () => aiSidebar.classList.remove('open'));
+
+        const bgSelector = document.getElementById('bg-selector');
+        const myVideo = document.getElementById('myVideo');
+
+        bgSelector.addEventListener('change', (e) => {
+            const chosenVideo = e.target.value;
+            myVideo.src = `{{ url_for('static', filename='') }}${chosenVideo}`;
+            myVideo.load();
+            myVideo.play().catch(err => console.log("Video auto play pending active state:", err));
+        });
+
+        const rainAudio = document.getElementById('amb-rain');
+        const cafeAudio = document.getElementById('amb-cafe');
+        const rainSlider = document.getElementById('volume-rain');
+        const cafeSlider = document.getElementById('volume-cafe');
+
+        function handleVolumeChange(audioElem, sliderElem) {
+            audioElem.volume = sliderElem.value;
+            if (sliderElem.value > 0 && timerId !== null) {
+                audioElem.play().catch(e => console.log("Audio waiting context:", e));
+            } else if (sliderElem.value == 0) {
+                audioElem.pause();
+            }
+        }
+
+        rainSlider.addEventListener('input', () => handleVolumeChange(rainAudio, rainSlider));
+        cafeSlider.addEventListener('input', () => handleVolumeChange(cafeAudio, cafeSlider));
+
+        function playAmbientTracks() {
+            if (rainSlider.value > 0) rainAudio.play().catch(e => {});
+            if (cafeSlider.value > 0) cafeAudio.play().catch(e => {});
+        }
+        
+        function pauseAmbientTracks() {
+            rainAudio.pause();
+            cafeAudio.pause();
+        }
+
+        const taskInput = document.getElementById('task-input');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const taskList = document.getElementById('task-list');
+
+        document.addEventListener('DOMContentLoaded', loadTasks);
+
+        function addTask() {
+            const taskText = taskInput.value.trim();
+            if (taskText === "") return;
+
+            createTaskElement(taskText, false);
+            saveTasks();
+            
+            taskInput.value = "";
+        }
+
+        function createTaskElement(text, isCompleted) {
+            const li = document.createElement('li');
+            li.className = 'task-item';
+            if (isCompleted) {
+                li.classList.add('completed');
+            }
+            li.innerHTML = `
+                <span class="task-text">${text}</span>
+                <button class="delete-task-btn">✕</button>
+            `;
+
+            li.querySelector('.task-text').addEventListener('click', () => {
+                li.classList.toggle('completed');
+                saveTasks(); 
+            });
+
+            li.querySelector('.delete-task-btn').addEventListener('click', () => {
+                li.remove();
+                saveTasks(); 
+            });
+
+            taskList.appendChild(li);
+        }
+        
+        function saveTasks() {
+            const tasks = [];
+            const items = taskList.querySelectorAll('.task-item');
+            
+            items.forEach(item => {
+                tasks.push({
+                    text: item.querySelector('.task-text').textContent,
+                    completed: item.classList.contains('completed')
+                });
+            });
+
+            localStorage.setItem('focusZoneTasks', JSON.stringify(tasks));
+        }
+
+        function loadTasks() {
+            const savedTasks = localStorage.getItem('focusZoneTasks');
+            if (!savedTasks) return;
+
+            const tasks = JSON.parse(savedTasks);
+            tasks.forEach(task => {
+                createTaskElement(task.text, task.completed);
+            });
+        }
+
+        addTaskBtn.addEventListener('click', addTask);
+        taskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+
+        const aiInput = document.getElementById('ai-input');
+        const aiSendBtn = document.getElementById('ai-send-btn');
+        const aiChatOutput = document.getElementById('ai-chat-output');
+
+        async function sendToAI() {
+            const userText = aiInput.value.trim();
+            if (userText === "") return;
+
+            appendMessage(userText, 'user-msg');
+            aiInput.value = "";
+
+            const typingDiv = appendMessage('Thinking...', 'ai-msg placeholder');
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userText })
+                });
+                const data = await response.json();
+                
+                typingDiv.remove();
+                if (data.reply) {
+                    appendMessage(data.reply, 'ai-msg');
+                } else {
+                    appendMessage(data.error || "Error generating a response.", 'ai-msg');
+                }
+            } catch (error) {
+                typingDiv.remove();
+                appendMessage("Failed to connect to local Ollama server.", 'ai-msg');
+            }
+        }
+
+        async function fetchAISessionSummary() {
+            const activeTasks = [];
+            taskList.querySelectorAll('.task-item:not(.completed) .task-text').forEach(el => {
+                activeTasks.push(el.textContent);
+            });
+
+            aiSidebar.classList.add('open');
+            const generatingDiv = appendMessage('Transmitting match data to central command...', 'ai-msg placeholder');
+
+            try {
+                const response = await fetch('/api/summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tasks: activeTasks })
+                });
+                const data = await response.json();
+                generatingDiv.remove();
+                appendMessage(data.summary, 'ai-msg system-summary-alert');
+            } catch (e) {
+                generatingDiv.remove();
+            }
+        }
+
+        function appendMessage(text, className) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = className;
+            msgDiv.textContent = text;
+            aiChatOutput.appendChild(msgDiv);
+            aiChatOutput.scrollTop = aiChatOutput.scrollHeight;
+            return msgDiv;
+        }
+
+        aiSendBtn.addEventListener('click', sendToAI);
+        aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendToAI(); });
     </script>
     
 </body>
