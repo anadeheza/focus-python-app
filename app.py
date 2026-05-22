@@ -33,26 +33,31 @@ def chat():
     except Exception as e:
         return jsonify({'error': 'Could not connect to local AI server.'}), 500
     
-
 @app.route('/api/summary', methods=['POST'])
 def summary():
     try:
         data = request.json
-        current_tasks = data.get('tasks', [])
+        completed_tasks = data.get('tasks', [])
         
-        tasks_str = ", ".join(current_tasks) if current_tasks else "focusing deeply"
-        prompt = f"The user just completed a productive 25-minute focus session. Their active tasks were: {tasks_str}. Write a very short, 2-sentence celebratory, retro-arcade-style victory message praising their focus and encouraging a short break."
+        if completed_tasks:
+            tasks_str = ", ".join(completed_tasks)
+            prompt = f"The user just finished a 25-minute focus session and successfully completed these tasks: {tasks_str}. Write a short, calm congratulatory message addressing these specific achievements."
+        else:
+            prompt = "The user just finished a 25-minute focus session, but didn't check off any tasks. Write a short, encouraging message congratulating them on completing the focus block itself and boosting their stamina."
 
         response = client.chat.completions.create(
             model="llama3",  
             messages=[
-                {"role": "system", "content": "You are a retro-arcade game announcer system. Speak in an encouraging, punchy, classic 8-bit or pixel-arcade style syntax. Keep it under 50 words total."},
+                {
+                    "role": "system", 
+                    "content": "You are a study partner. Give a calm, simple congratulations message. Mention the completed achievements explicitly if provided. Keep it brief and under 30 words total."
+                },
                 {"role": "user", "content": prompt}
             ]
         )
         return jsonify({'summary': response.choices[0].message.content})
     except Exception as e:
-        return jsonify({'summary': "🏆 Session complete! Great work out there explorer. Take a well-deserved break!"})
+        return jsonify({'summary': "Exceptional focus out there! Take a well-deserved break ☕︎"})
 
 if __name__ == '__main__':
     app.run(debug=True)

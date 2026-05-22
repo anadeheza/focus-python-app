@@ -11,8 +11,13 @@
     <div id="start-screen">
         <div class="start-content">
             <h1>Focus Zone</h1>
-            <p class="blink">Press Enter to start</p>
+            <p class="blink">Click or Enter to start, F11 for a smoother experience</p>
         </div>
+    </div>
+
+    <div id="top-status-bar">
+        <div id="live-clock" class="status-widget">00:00:00</div>
+        <div id="live-weather" class="status-widget">☀️ Loading weather...</div>
     </div>
 
     <button id="toggle-tasks-btn" class="sidebar-trigger tab-left">Tasks</button>
@@ -24,6 +29,7 @@
             <button class="close-panel-btn" id="close-tasks-btn">✕</button>
         </div>
         <div class="panel-body">
+            <h2>Tasks</h2>
             <div class="task-input-row">
                 <input type="text" id="task-input" placeholder="⊹ ࣪ ﹏𓊝﹏𓂁﹏ ࣪ ˖">
                 <button id="add-task-btn">╋</button>
@@ -48,6 +54,11 @@
                 <div class="mixer-row">
                     <label>Cafe</label>
                     <input type="range" id="volume-cafe" min="0" max="1" step="0.1" value="0">
+                </div>
+                <hr class="panel-divider">
+                <div class="mixer-row toggle-row">
+                    <label for="toggle-lofi">Lofi Music</label>
+                    <input type="checkbox" id="toggle-lofi">
                 </div>
             </div>
         </div>
@@ -124,14 +135,16 @@
             timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
         }
 
+        const lofiToggle = document.getElementById('toggle-lofi');
+
         function startTimer() {
             if(timerId === null) {
                 startBtn.textContent = 'Stop'
 
                 bgMusic.volume = 0.3; 
-                bgMusic.play().catch(error => {
-                    console.log("Audio play was blocked or interrupted:", error);
-                });
+                if (lofiToggle.checked) {
+                    bgMusic.play().catch(error => console.log("Audio play blocked:", error));
+                }
 
                 playAmbientTracks();
 
@@ -145,7 +158,7 @@
                         bellMusic.volume = 0.3
                         bellMusic.play()
 
-                        fetchAISessionSummary();
+                        fetchAICongrats();
 
                         resetTimer()
                     }
@@ -154,6 +167,7 @@
                 clearInterval(timerId)
                 timerId = null 
                 startBtn.textContent = 'Start'
+
                 bgMusic.pause()
                 pauseAmbientTracks();
             }
@@ -170,6 +184,16 @@
             bgMusic.currentTime = 0;
             pauseAmbientTracks();
         }
+
+        lofiToggle.addEventListener('change', () => {
+            if (timerId !== null) { 
+                if (lofiToggle.checked) {
+                    bgMusic.play().catch(e => {});
+                } else {
+                    bgMusic.pause();
+                }
+            }
+        });
 
         const aalert = document.getElementById('alert')
         const message = document.getElementById('message')
@@ -332,26 +356,29 @@
             }
         }
 
-        async function fetchAISessionSummary() {
-            const activeTasks = [];
-            taskList.querySelectorAll('.task-item:not(.completed) .task-text').forEach(el => {
-                activeTasks.push(el.textContent);
+        async function fetchAICongrats() {
+
+            const completedTasks = [];
+            
+            taskList.querySelectorAll('.task-item.completed .task-text').forEach(el => {
+                completedTasks.push(el.textContent);
             });
 
             aiSidebar.classList.add('open');
-            const generatingDiv = appendMessage('Transmitting match data to central command...', 'ai-msg placeholder');
+            const generatingDiv = appendMessage('Calculating score and rewards...', 'ai-msg placeholder');
 
             try {
                 const response = await fetch('/api/summary', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tasks: activeTasks })
+                    body: JSON.stringify({ tasks: completedTasks })
                 });
                 const data = await response.json();
                 generatingDiv.remove();
                 appendMessage(data.summary, 'ai-msg system-summary-alert');
             } catch (e) {
                 generatingDiv.remove();
+                appendMessage("Great session, keep it up!", 'ai-msg system-summary-alert');
             }
         }
 
@@ -366,6 +393,75 @@
 
         aiSendBtn.addEventListener('click', sendToAI);
         aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendToAI(); });
+    
+        function updateClock() {
+            const now = new Date() 
+
+            const timeOptions = {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            }
+
+            const localTimeStr = new Intl.DateTimeFormat(navigator.language, timeOptions).format(now)
+            document.getElementById('live-clock').textContent = localTimeStr
+        }
+
+        setInterval(updateClock, 1000)
+        updateClock() 
+
+        async function fetchWeatherForLocation(lat, lon) {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+                const data = await res.json() 
+
+                if(data && data.current_weather) {
+                    const temp = Math.round(data.current_weather.temperature)
+                    const code = data.current_weather.weathercode
+                    const emoji = getWeatherEmoji(code)
+
+                    document.getElementById('live-weather').textContent = `${emoji} ${temp}°C`
+                }
+            } catch (error) {
+                console.log("Weather fetch failed:", error);
+                document.getElementById('live-weather').textContent = "🌤️ Weather Error";
+            }
+        }
+
+        function initWeatherSystem() {
+            if("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude
+                        const lon = position.coords.longitude
+
+                        fetchWeatherForLocation(lat, lon)
+
+                        setInterval(() => fetchWeatherForLocation(lat, lon), 15 * 60 * 1000);
+                    },
+
+                    (error) => {
+                        console.log("Geolocation denied or unavailable:", error.message);
+                        document.getElementById('live-weather').textContent = "📍 Location Off";
+                    }
+                )
+            } else {
+                document.getElementById('live-weather').textContent = "🌤️ Unsupported";
+            }
+        }
+
+        function getWeatherEmoji(code) {
+            if (code === 0) return "☀️"; // Clear sky
+            if (code >= 1 && code <= 3) return "🌤️"; // Mainly clear / partly cloudy
+            if (code >= 45 && code <= 48) return "🌫️"; // Fog
+            if (code >= 51 && code <= 67) return "🌧️"; // Drizzle / Rain
+            if (code >= 71 && code <= 77) return "❄️"; // Snow
+            if (code >= 80 && code <= 82) return "🌦️"; // Rain showers
+            if (code >= 95) return "⛈️"; // Thunderstorm
+            return "🌤️";
+        }
+
+        initWeatherSystem();
     </script>
     
 </body>
