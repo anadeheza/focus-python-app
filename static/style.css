@@ -519,7 +519,6 @@ button {
     100% { border-color: rgba(255, 240, 195, 0.5); }
 }
 
-/* Pantalla de login de Clerk 
 #clerk-auth-screen {
     position: fixed;
     top: 0; left: 0;
@@ -553,4 +552,4 @@ button {
     left: 20px;
     z-index: 6;
 }
-    */
+    
