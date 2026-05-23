@@ -221,9 +221,9 @@
                         updateDisplay()
                     } else {
                         clearInterval(timerId)
-                        showMessage("Times's up!")
                         bellMusic.volume = 0.3
                         bellMusic.play()
+                        showMessage("Times's up!")
 
                         fetchAICongrats();
 
