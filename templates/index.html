@@ -5,12 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus time</title>
 
-    <script
-        async
-        crossorigin="anonymous"
-        data-clerk-publishable-key="pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA"
-        src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-        onload="window.dispatchEvent(new Event('clerk-loaded'))">
+    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+        data-clerk-publishable-key="pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA">
     </script>
     
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -166,7 +162,7 @@
             });
         }
 
-        window.addEventListener('clerk-loaded', initClerk);
+        window.addEventListener('load', initClerk);
 
         window.addEventListener('keydown', function(event) {
             if(event.key === 'Enter' || event.keyCode === 13) {
