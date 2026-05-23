@@ -19,7 +19,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-
+with app.app_context():
+    db.create_all()
+    
 API_KEY = os.environ.get("GEMINI_API_KEY")
 client = OpenAI(
     api_key=API_KEY,
@@ -101,6 +103,10 @@ class UserSettings(db.Model):
     clerk_user_id = db.Column(db.String(100), unique=True, nullable=False)
     focus_duration = db.Column(db.Integer, default=25)
     break_duration = db.Column(db.Integer, default=5)
+    theme = db.Column(db.String(50), default='chimney.mp4')
+    volume_rain = db.Column(db.Float, default=0.0)
+    volume_cafe = db.Column(db.Float, default=0.0)
+    lofi_enabled = db.Column(db.Boolean, default=False)
 
 
 # --------------- RUTAS API ---------------
@@ -137,13 +143,63 @@ def tasks():
         task = Task(clerk_user_id=user_id, title=data['title'])
         db.session.add(task)
         db.session.commit()
-        return jsonify({'message': 'Tarea creada'})
-    user_tasks = Task.query.filter_by(clerk_user_id=user_id).all()
+        return jsonify({'id': task.id, 'title': task.title, 'completed': task.completed})
+    user_tasks = Task.query.filter_by(clerk_user_id=user_id).order_by(Task.created_at).all()
     return jsonify([{
         'id': t.id,
         'title': t.title,
         'completed': t.completed
     } for t in user_tasks])
+
+@app.route('/api/tasks/<int:task_id>', methods=['PATCH', 'DELETE'])
+def task_detail(task_id):
+    user_id = get_clerk_user_id()
+    if not user_id:
+        return jsonify({'error': 'No autorizado'}), 401
+    task = Task.query.filter_by(id=task_id, clerk_user_id=user_id).first()
+    if not task:
+        return jsonify({'error': 'Not found'}), 404
+    if request.method == 'DELETE':
+        db.session.delete(task)
+        db.session.commit()
+        return jsonify({'message': 'Deleted'})
+    if request.method == 'PATCH':
+        data = request.json
+        if 'completed' in data:
+            task.completed = data['completed']
+        db.session.commit()
+        return jsonify({'id': task.id, 'title': task.title, 'completed': task.completed})
+
+@app.route('/api/preferences', methods=['GET', 'POST'])
+def preferences():
+    user_id = get_clerk_user_id()
+    if not user_id:
+        return jsonify({'error': 'No autorizado'}), 401
+    settings = UserSettings.query.filter_by(clerk_user_id=user_id).first()
+    if request.method == 'POST':
+        data = request.json
+        if not settings:
+            settings = UserSettings(clerk_user_id=user_id)
+            db.session.add(settings)
+        if 'theme' in data:
+            settings.theme = data['theme']
+        if 'volume_rain' in data:
+            settings.volume_rain = data['volume_rain']
+        if 'volume_cafe' in data:
+            settings.volume_cafe = data['volume_cafe']
+        if 'lofi_enabled' in data:
+            settings.lofi_enabled = data['lofi_enabled']
+        db.session.commit()
+        return jsonify({'message': 'Saved'})
+    # GET
+    if not settings:
+        return jsonify({'theme': 'chimney.mp4', 'volume_rain': 0.0, 'volume_cafe': 0.0, 'lofi_enabled': False})
+    return jsonify({
+        'theme': settings.theme,
+        'volume_rain': settings.volume_rain,
+        'volume_cafe': settings.volume_cafe,
+        'lofi_enabled': settings.lofi_enabled
+    })
 
 @app.route('/')
 def home():
@@ -159,7 +215,7 @@ def chat():
             return jsonify({'error': 'Message is empty'}), 400
 
         response = client.chat.completions.create(
-            model="gemini-2.0-flash",
+            model="gemini-1.5-flash",
             messages=[
                 {"role": "system", "content": "You are a helpful, concise AI study and work assistant inside a focus timer app. Give actionable, clear, and encouraging advice for studying, coding, or managing tasks."},
                 {"role": "user", "content": user_message}
@@ -183,7 +239,7 @@ def summary():
             prompt = "The user just finished a 25-minute focus session, but didn't check off any tasks. Write a short, encouraging message congratulating them on completing the focus block itself and boosting their stamina."
 
         response = client.chat.completions.create(
-            model="gemini-2.0-flash",
+            model="gemini-1.5-flash",
             messages=[
                 {
                     "role": "system",

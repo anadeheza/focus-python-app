@@ -6,7 +6,7 @@
     <title>Focus time</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-    <!-- ✅ CLERK: reemplazá YOUR_PUBLISHABLE_KEY con tu clave pk_live_... del dashboard de Clerk -->
+
     <script
         async
         crossorigin="anonymous"
@@ -17,13 +17,11 @@
 </head>
 <body>
 
-    <!-- ✅ CLERK: pantalla de login, se oculta al autenticarse -->
     <div id="clerk-auth-screen">
         <h1>Focus Zone</h1>
         <div id="clerk-sign-in-container"></div>
     </div>
 
-    <!-- ✅ CLERK: botón de usuario (avatar + logout), aparece al loguearse -->
     <div id="clerk-user-btn"></div>
 
     <div id="start-screen" class="hidden">
@@ -126,24 +124,19 @@
     </div>
 
     <script>
-        // ============================================================
-        // ✅ CLERK AUTH
-        // ============================================================
-        const clerkAuthScreen = document.getElementById('clerk-auth-screen');
+       
+       const clerkAuthScreen = document.getElementById('clerk-auth-screen');
         const startScreen = document.getElementById('start-screen');
 
         async function initClerk() {
             await window.Clerk.load();
 
             if (window.Clerk.user) {
-                // Ya está logueado: montar botón de usuario y mostrar app
                 mountClerkUserButton();
                 showApp();
             } else {
-                // No logueado: mostrar pantalla de login de Clerk
                 window.Clerk.mountSignIn(document.getElementById('clerk-sign-in-container'));
 
-                // Escuchar cuando el usuario se loguea exitosamente
                 window.Clerk.addListener(({ user }) => {
                     if (user) {
                         clerkAuthScreen.style.display = 'none';
@@ -161,9 +154,10 @@
         function showApp() {
             clerkAuthScreen.style.display = 'none';
             startScreen.classList.remove('hidden');
+
+            loadUserData();
         }
 
-        // Función helper: obtiene el JWT de Clerk para mandarlo al backend
         async function getAuthHeaders() {
             const token = await window.Clerk.session.getToken();
             return {
@@ -172,7 +166,6 @@
             };
         }
 
-        // Iniciar Clerk cuando el script esté listo
         if (window.Clerk) {
             initClerk();
         } else {
@@ -180,9 +173,6 @@
                 .addEventListener('load', initClerk);
         }
 
-        // ============================================================
-        // START SCREEN
-        // ============================================================
         const appContainer = document.getElementById('focus-app');
         const bgMusic = document.getElementById('bg-music');
         const bellMusic = document.getElementById('bell-music');
@@ -194,16 +184,12 @@
         })
 
         window.addEventListener('click', function(event) {
-            // Solo hacer fade si el click no es dentro de la pantalla de auth de Clerk
             if (!clerkAuthScreen.contains(event.target)) {
                 startScreen.classList.add('fade-out');
             }
         })
 
-        // ============================================================
-        // TIMER
-        // ============================================================
-        let timeleft = 25 * 60
+        let timeleft = 5
         let timerId = null 
 
         const timerDisplay = document.getElementById('timer')
@@ -274,6 +260,7 @@
                     bgMusic.pause();
                 }
             }
+            savePreferences({ lofi_enabled: lofiToggle.checked });
         });
 
         const aalert = document.getElementById('alert')
@@ -291,9 +278,6 @@
         startBtn.addEventListener('click', startTimer)
         resetBtn.addEventListener('click', resetTimer)
 
-        // ============================================================
-        // SIDEBARS
-        // ============================================================
         const taskSidebar = document.getElementById('task-sidebar');
         const aiSidebar = document.getElementById('ai-sidebar');
         
@@ -303,9 +287,6 @@
         document.getElementById('toggle-ai-btn').addEventListener('click', () => aiSidebar.classList.add('open'));
         document.getElementById('close-ai-btn').addEventListener('click', () => aiSidebar.classList.remove('open'));
 
-        // ============================================================
-        // VIDEO BACKGROUND
-        // ============================================================
         const bgSelector = document.getElementById('bg-selector');
         const myVideo = document.getElementById('myVideo');
 
@@ -314,11 +295,9 @@
             myVideo.src = `{{ url_for('static', filename='') }}${chosenVideo}`;
             myVideo.load();
             myVideo.play().catch(err => console.log("Video auto play pending active state:", err));
+            savePreferences({ theme: chosenVideo });
         });
 
-        // ============================================================
-        // AMBIENT AUDIO
-        // ============================================================
         const rainAudio = document.getElementById('amb-rain');
         const cafeAudio = document.getElementById('amb-cafe');
         const rainSlider = document.getElementById('volume-rain');
@@ -333,8 +312,14 @@
             }
         }
 
-        rainSlider.addEventListener('input', () => handleVolumeChange(rainAudio, rainSlider));
-        cafeSlider.addEventListener('input', () => handleVolumeChange(cafeAudio, cafeSlider));
+        rainSlider.addEventListener('input', () => {
+            handleVolumeChange(rainAudio, rainSlider);
+            savePreferences({ volume_rain: parseFloat(rainSlider.value) });
+        });
+        cafeSlider.addEventListener('input', () => {
+            handleVolumeChange(cafeAudio, cafeSlider);
+            savePreferences({ volume_cafe: parseFloat(cafeSlider.value) });
+        });
 
         function playAmbientTracks() {
             if (rainSlider.value > 0) rainAudio.play().catch(e => {});
@@ -346,79 +331,112 @@
             cafeAudio.pause();
         }
 
-        // ============================================================
-        // TASKS (localStorage — sin login requerido para las tareas locales)
-        // ============================================================
         const taskInput = document.getElementById('task-input');
         const addTaskBtn = document.getElementById('add-task-btn');
         const taskList = document.getElementById('task-list');
 
-        document.addEventListener('DOMContentLoaded', loadTasks);
-
-        function addTask() {
-            const taskText = taskInput.value.trim();
-            if (taskText === "") return;
-
-            createTaskElement(taskText, false);
-            saveTasks();
-            
-            taskInput.value = "";
+        async function loadUserData() {
+            await loadTasks();
+            await loadPreferences();
         }
 
-        function createTaskElement(text, isCompleted) {
+        async function loadTasks() {
+            try {
+                const res = await fetch('/api/tasks', { headers: await getAuthHeaders() });
+                const tasks = await res.json();
+                taskList.innerHTML = '';
+                tasks.forEach(task => createTaskElement(task.id, task.title, task.completed));
+            } catch (e) {
+                console.log('Could not load tasks:', e);
+            }
+        }
+
+        async function addTask() {
+            const taskText = taskInput.value.trim();
+            if (taskText === "") return;
+            taskInput.value = "";
+            try {
+                const res = await fetch('/api/tasks', {
+                    method: 'POST',
+                    headers: await getAuthHeaders(),
+                    body: JSON.stringify({ title: taskText })
+                });
+                const task = await res.json();
+                createTaskElement(task.id, task.title, task.completed);
+            } catch (e) {
+                console.log('Could not add task:', e);
+            }
+        }
+
+        function createTaskElement(id, text, isCompleted) {
             const li = document.createElement('li');
             li.className = 'task-item';
-            if (isCompleted) {
-                li.classList.add('completed');
-            }
+            li.dataset.id = id;
+            if (isCompleted) li.classList.add('completed');
             li.innerHTML = `
                 <span class="task-text">${text}</span>
                 <button class="delete-task-btn">✕</button>
             `;
-
-            li.querySelector('.task-text').addEventListener('click', () => {
-                li.classList.toggle('completed');
-                saveTasks(); 
+            li.querySelector('.task-text').addEventListener('click', async () => {
+                const nowCompleted = !li.classList.contains('completed');
+                li.classList.toggle('completed', nowCompleted);
+                try {
+                    await fetch(`/api/tasks/${id}`, {
+                        method: 'PATCH',
+                        headers: await getAuthHeaders(),
+                        body: JSON.stringify({ completed: nowCompleted })
+                    });
+                } catch (e) { console.log('Could not update task:', e); }
             });
-
-            li.querySelector('.delete-task-btn').addEventListener('click', () => {
+            li.querySelector('.delete-task-btn').addEventListener('click', async () => {
                 li.remove();
-                saveTasks(); 
+                try {
+                    await fetch(`/api/tasks/${id}`, {
+                        method: 'DELETE',
+                        headers: await getAuthHeaders()
+                    });
+                } catch (e) { console.log('Could not delete task:', e); }
             });
-
             taskList.appendChild(li);
-        }
-        
-        function saveTasks() {
-            const tasks = [];
-            const items = taskList.querySelectorAll('.task-item');
-            
-            items.forEach(item => {
-                tasks.push({
-                    text: item.querySelector('.task-text').textContent,
-                    completed: item.classList.contains('completed')
-                });
-            });
-
-            localStorage.setItem('focusZoneTasks', JSON.stringify(tasks));
-        }
-
-        function loadTasks() {
-            const savedTasks = localStorage.getItem('focusZoneTasks');
-            if (!savedTasks) return;
-
-            const tasks = JSON.parse(savedTasks);
-            tasks.forEach(task => {
-                createTaskElement(task.text, task.completed);
-            });
         }
 
         addTaskBtn.addEventListener('click', addTask);
         taskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
 
-        // ============================================================
-        // AI CHAT — ✅ usa getAuthHeaders() para autenticar con Clerk
-        // ============================================================
+        async function savePreferences(patch) {
+            try {
+                await fetch('/api/preferences', {
+                    method: 'POST',
+                    headers: await getAuthHeaders(),
+                    body: JSON.stringify(patch)
+                });
+            } catch (e) { console.log('Could not save preferences:', e); }
+        }
+
+        async function loadPreferences() {
+            try {
+                const res = await fetch('/api/preferences', { headers: await getAuthHeaders() });
+                const prefs = await res.json();
+
+                // Theme
+                const videoSrc = `{{ url_for('static', filename='') }}${prefs.theme}`;
+                myVideo.src = videoSrc;
+                myVideo.load();
+                bgSelector.value = prefs.theme;
+
+                // Volumes
+                rainSlider.value = prefs.volume_rain;
+                cafeSlider.value = prefs.volume_cafe;
+                rainAudio.volume = prefs.volume_rain;
+                cafeAudio.volume = prefs.volume_cafe;
+
+                // Lofi
+                lofiToggle.checked = prefs.lofi_enabled;
+            } catch (e) {
+                console.log('Could not load preferences:', e);
+            }
+        }
+
         const aiInput = document.getElementById('ai-input');
         const aiSendBtn = document.getElementById('ai-send-btn');
         const aiChatOutput = document.getElementById('ai-chat-output');
@@ -435,7 +453,7 @@
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: await getAuthHeaders(), // ✅ Clerk token incluido
+                    headers: await getAuthHeaders(),
                     body: JSON.stringify({ message: userText })
                 });
                 const data = await response.json();
@@ -465,7 +483,7 @@
             try {
                 const response = await fetch('/api/summary', {
                     method: 'POST',
-                    headers: await getAuthHeaders(), // ✅ Clerk token incluido
+                    headers: await getAuthHeaders(), 
                     body: JSON.stringify({ tasks: completedTasks })
                 });
                 const data = await response.json();
@@ -489,9 +507,6 @@
         aiSendBtn.addEventListener('click', sendToAI);
         aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendToAI(); });
     
-        // ============================================================
-        // CLOCK & WEATHER
-        // ============================================================
         function updateClock() {
             const now = new Date() 
 
