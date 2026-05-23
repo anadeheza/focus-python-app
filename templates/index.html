@@ -4,29 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus time</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-        data-clerk-publishable-key="pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA">
-    </script>
-    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- ✅ CLERK: reemplazá YOUR_PUBLISHABLE_KEY con tu clave pk_live_... del dashboard de Clerk -->
+    <script
+        async
+        crossorigin="anonymous"
+        data-clerk-publishable-key="pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA"
+        src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+        type="text/javascript"
+    ></script>
 </head>
 <body>
 
-    <!-- Pantalla de autenticación -->
-    <div id="auth-screen">
+    <!-- ✅ CLERK: pantalla de login, se oculta al autenticarse -->
+    <div id="clerk-auth-screen">
         <h1>Focus Zone</h1>
-        <p>Sign in to start your session</p>
         <div id="clerk-sign-in-container"></div>
     </div>
 
-    <!-- Barra de usuario (visible cuando está logueado) -->
-    <div id="user-bar" style="display:none">
-        <span id="user-email"></span>
-        <button id="sign-out-btn">Sign out</button>
-    </div>
+    <!-- ✅ CLERK: botón de usuario (avatar + logout), aparece al loguearse -->
+    <div id="clerk-user-btn"></div>
 
-    <div id="start-screen">
+    <div id="start-screen" class="hidden">
         <div class="start-content">
             <h1>Focus Zone</h1>
             <p class="blink">Click or Enter to start, F11 for a smoother experience</p>
@@ -126,43 +126,66 @@
     </div>
 
     <script>
-        const startScreen = document.getElementById('start-screen')
-        const appContainer = document.getElementById('focus-app')
-        const bgMusic = document.getElementById('bg-music');
-        const bellMusic = document.getElementById('bell-music');
+        // ============================================================
+        // ✅ CLERK AUTH
+        // ============================================================
+        const clerkAuthScreen = document.getElementById('clerk-auth-screen');
+        const startScreen = document.getElementById('start-screen');
 
         async function initClerk() {
-            await window.Clerk.load({
-                publishableKey: "pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA"
-            });
-
-            const authScreen = document.getElementById('auth-screen');
-            const userBar    = document.getElementById('user-bar');
-            const userEmail  = document.getElementById('user-email');
-
-            function showApp(user) {
-                authScreen.style.display = 'none';
-                userBar.style.display = 'flex';
-                userEmail.textContent = user.primaryEmailAddress?.emailAddress || '';
-            }
+            await window.Clerk.load();
 
             if (window.Clerk.user) {
-                showApp(window.Clerk.user);
+                // Ya está logueado: montar botón de usuario y mostrar app
+                mountClerkUserButton();
+                showApp();
             } else {
-                authScreen.style.display = 'flex';
+                // No logueado: mostrar pantalla de login de Clerk
                 window.Clerk.mountSignIn(document.getElementById('clerk-sign-in-container'));
+
+                // Escuchar cuando el usuario se loguea exitosamente
                 window.Clerk.addListener(({ user }) => {
-                    if (user) showApp(user);
+                    if (user) {
+                        clerkAuthScreen.style.display = 'none';
+                        mountClerkUserButton();
+                        showApp();
+                    }
                 });
             }
-
-            document.getElementById('sign-out-btn').addEventListener('click', async () => {
-                await window.Clerk.signOut();
-                location.reload();
-            });
         }
 
-        window.addEventListener('load', initClerk);
+        function mountClerkUserButton() {
+            window.Clerk.mountUserButton(document.getElementById('clerk-user-btn'));
+        }
+
+        function showApp() {
+            clerkAuthScreen.style.display = 'none';
+            startScreen.classList.remove('hidden');
+        }
+
+        // Función helper: obtiene el JWT de Clerk para mandarlo al backend
+        async function getAuthHeaders() {
+            const token = await window.Clerk.session.getToken();
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+        }
+
+        // Iniciar Clerk cuando el script esté listo
+        if (window.Clerk) {
+            initClerk();
+        } else {
+            document.querySelector('[data-clerk-publishable-key]')
+                .addEventListener('load', initClerk);
+        }
+
+        // ============================================================
+        // START SCREEN
+        // ============================================================
+        const appContainer = document.getElementById('focus-app');
+        const bgMusic = document.getElementById('bg-music');
+        const bellMusic = document.getElementById('bell-music');
 
         window.addEventListener('keydown', function(event) {
             if(event.key === 'Enter' || event.keyCode === 13) {
@@ -171,8 +194,15 @@
         })
 
         window.addEventListener('click', function(event) {
-            startScreen.classList.add('fade-out');
+            // Solo hacer fade si el click no es dentro de la pantalla de auth de Clerk
+            if (!clerkAuthScreen.contains(event.target)) {
+                startScreen.classList.add('fade-out');
+            }
         })
+
+        // ============================================================
+        // TIMER
+        // ============================================================
         let timeleft = 25 * 60
         let timerId = null 
 
@@ -261,6 +291,9 @@
         startBtn.addEventListener('click', startTimer)
         resetBtn.addEventListener('click', resetTimer)
 
+        // ============================================================
+        // SIDEBARS
+        // ============================================================
         const taskSidebar = document.getElementById('task-sidebar');
         const aiSidebar = document.getElementById('ai-sidebar');
         
@@ -270,6 +303,9 @@
         document.getElementById('toggle-ai-btn').addEventListener('click', () => aiSidebar.classList.add('open'));
         document.getElementById('close-ai-btn').addEventListener('click', () => aiSidebar.classList.remove('open'));
 
+        // ============================================================
+        // VIDEO BACKGROUND
+        // ============================================================
         const bgSelector = document.getElementById('bg-selector');
         const myVideo = document.getElementById('myVideo');
 
@@ -280,6 +316,9 @@
             myVideo.play().catch(err => console.log("Video auto play pending active state:", err));
         });
 
+        // ============================================================
+        // AMBIENT AUDIO
+        // ============================================================
         const rainAudio = document.getElementById('amb-rain');
         const cafeAudio = document.getElementById('amb-cafe');
         const rainSlider = document.getElementById('volume-rain');
@@ -307,6 +346,9 @@
             cafeAudio.pause();
         }
 
+        // ============================================================
+        // TASKS (localStorage — sin login requerido para las tareas locales)
+        // ============================================================
         const taskInput = document.getElementById('task-input');
         const addTaskBtn = document.getElementById('add-task-btn');
         const taskList = document.getElementById('task-list');
@@ -374,6 +416,9 @@
         addTaskBtn.addEventListener('click', addTask);
         taskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
 
+        // ============================================================
+        // AI CHAT — ✅ usa getAuthHeaders() para autenticar con Clerk
+        // ============================================================
         const aiInput = document.getElementById('ai-input');
         const aiSendBtn = document.getElementById('ai-send-btn');
         const aiChatOutput = document.getElementById('ai-chat-output');
@@ -390,7 +435,7 @@
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await getAuthHeaders(), // ✅ Clerk token incluido
                     body: JSON.stringify({ message: userText })
                 });
                 const data = await response.json();
@@ -403,12 +448,11 @@
                 }
             } catch (error) {
                 typingDiv.remove();
-                appendMessage("Failed to connect to local Ollama server.", 'ai-msg');
+                appendMessage("Failed to connect to AI server.", 'ai-msg');
             }
         }
 
         async function fetchAICongrats() {
-
             const completedTasks = [];
             
             taskList.querySelectorAll('.task-item.completed .task-text').forEach(el => {
@@ -421,7 +465,7 @@
             try {
                 const response = await fetch('/api/summary', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await getAuthHeaders(), // ✅ Clerk token incluido
                     body: JSON.stringify({ tasks: completedTasks })
                 });
                 const data = await response.json();
@@ -445,6 +489,9 @@
         aiSendBtn.addEventListener('click', sendToAI);
         aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendToAI(); });
     
+        // ============================================================
+        // CLOCK & WEATHER
+        // ============================================================
         function updateClock() {
             const now = new Date() 
 
@@ -502,13 +549,13 @@
         }
 
         function getWeatherEmoji(code) {
-            if (code === 0) return "☀️"; // Clear sky
-            if (code >= 1 && code <= 3) return "🌤️"; // Mainly clear / partly cloudy
-            if (code >= 45 && code <= 48) return "🌫️"; // Fog
-            if (code >= 51 && code <= 67) return "🌧️"; // Drizzle / Rain
-            if (code >= 71 && code <= 77) return "❄️"; // Snow
-            if (code >= 80 && code <= 82) return "🌦️"; // Rain showers
-            if (code >= 95) return "⛈️"; // Thunderstorm
+            if (code === 0) return "☀️";
+            if (code >= 1 && code <= 3) return "🌤️";
+            if (code >= 45 && code <= 48) return "🌫️";
+            if (code >= 51 && code <= 67) return "🌧️";
+            if (code >= 71 && code <= 77) return "❄️";
+            if (code >= 80 && code <= 82) return "🌦️";
+            if (code >= 95) return "⛈️";
             return "🌤️";
         }
 
