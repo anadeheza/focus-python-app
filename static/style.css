@@ -519,34 +519,38 @@ button {
     100% { border-color: rgba(255, 240, 195, 0.5); }
 }
 
-/* Pantalla de login de Clerk */
-        #clerk-auth-screen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #fdd4b8b0;
-            backdrop-filter: blur(12px);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-            font-family: "Jersey 10", sans-serif;
-        }
-        #clerk-auth-screen h1 {
-            font-size: 2.5rem;
-            color: #39260089;
-            letter-spacing: 4px;
-            margin-bottom: 20px;
-        }
-        #clerk-sign-in-container {
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        }
-        #clerk-user-btn {
-            position: fixed;
-            top: 18px;
-            left: 20px;
-            z-index: 6;
-        }
+/* Pantalla de login de Clerk 
+#clerk-auth-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #fdd4b8b0;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    font-family: "Jersey 10", sans-serif;
+}
+
+#clerk-auth-screen h1 {
+    font-size: 2.5rem;
+    color: #39260089;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+}
+
+#clerk-sign-in-container {
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+#clerk-user-btn {
+    position: fixed;
+    top: 18px;
+    left: 20px;
+    z-index: 6;
+}
+    */
