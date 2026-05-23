@@ -5,14 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus time</title>
 
-    <script async crossorigin="anonymous"
-        src="https://[tu-frontend-api].clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-        data-clerk-publishable-key="pk_test_...">
+    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+        data-clerk-publishable-key="pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA">
     </script>
+
+    <style>
+        #auth-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            color: white;
+            font-family: inherit;
+        }
+        #auth-screen h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+        #auth-screen p {
+            margin-bottom: 2rem;
+            opacity: 0.6;
+            font-size: 0.95rem;
+        }
+        #clerk-sign-in-container { min-width: 320px; }
+        #user-bar {
+            position: fixed;
+            top: 12px;
+            right: 16px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #user-bar span {
+            color: white;
+            font-size: 0.85rem;
+            opacity: 0.8;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+        }
+        #sign-out-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            backdrop-filter: blur(4px);
+            transition: background 0.2s;
+        }
+        #sign-out-btn:hover { background: rgba(255,255,255,0.25); }
+    </style>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+
+    <!-- Pantalla de autenticación -->
+    <div id="auth-screen">
+        <h1>Focus Zone</h1>
+        <p>Sign in to start your session</p>
+        <div id="clerk-sign-in-container"></div>
+    </div>
+
+    <!-- Barra de usuario (visible cuando está logueado) -->
+    <div id="user-bar" style="display:none">
+        <span id="user-email"></span>
+        <button id="sign-out-btn">Sign out</button>
+    </div>
 
     <div id="start-screen">
         <div class="start-content">
@@ -119,15 +185,43 @@
         const bgMusic = document.getElementById('bg-music');
         const bellMusic = document.getElementById('bell-music');
 
-        const token = await window.Clerk.session.getToken();
+        // ── Clerk auth ──────────────────────────────────────────
+        async function initClerk() {
+            await window.Clerk.load();
 
-        fetch('/api/sessions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+            const authScreen = document.getElementById('auth-screen');
+            const userBar    = document.getElementById('user-bar');
+            const userEmail  = document.getElementById('user-email');
+
+            if (window.Clerk.user) {
+                // Ya está logueado
+                authScreen.style.display = 'none';
+                userBar.style.display = 'flex';
+                userEmail.textContent = window.Clerk.user.primaryEmailAddress?.emailAddress || '';
+            } else {
+                // Mostrar pantalla de login
+                authScreen.style.display = 'flex';
+                window.Clerk.mountSignIn(document.getElementById('clerk-sign-in-container'));
+
+                // Esperar hasta que se loguee
+                window.Clerk.addListener(({ user }) => {
+                    if (user) {
+                        authScreen.style.display = 'none';
+                        userBar.style.display = 'flex';
+                        userEmail.textContent = user.primaryEmailAddress?.emailAddress || '';
+                    }
+                });
             }
-        });
+
+            // Botón de sign out
+            document.getElementById('sign-out-btn').addEventListener('click', async () => {
+                await window.Clerk.signOut();
+                location.reload();
+            });
+        }
+
+        initClerk();
+        // ────────────────────────────────────────────────────────
 
         window.addEventListener('keydown', function(event) {
             if(event.key === 'Enter' || event.keyCode === 13) {
