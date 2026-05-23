@@ -2,10 +2,10 @@ from flask import Flask, render_template, request, jsonify
 import os
 import jwt
 import requests as req_lib
-from openai import OpenAI
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import datetime
+import google.generativeai as genai
 
 
 app = Flask(__name__)
@@ -20,10 +20,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 API_KEY = os.environ.get("GEMINI_API_KEY")
-client = OpenAI(
-    api_key=API_KEY,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
+genai.configure(api_key=API_KEY)
 
 CLERK_SECRET_KEY = os.environ.get("CLERK_SECRET_KEY")
 CLERK_JWKS_URL = "https://api.clerk.com/v1/jwks"
@@ -214,14 +211,12 @@ def chat():
         if not user_message:
             return jsonify({'error': 'Message is empty'}), 400
 
-        response = client.chat.completions.create(
-            model="gemini-1.5-flash-latest",
-            messages=[
-                {"role": "system", "content": "You are a helpful, concise AI study and work assistant inside a focus timer app. Give actionable, clear, and encouraging advice for studying, coding, or managing tasks."},
-                {"role": "user", "content": user_message}
-            ]
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction="You are a helpful, concise AI study and work assistant inside a focus timer app. Give actionable, clear, and encouraging advice for studying, coding, or managing tasks."
         )
-        return jsonify({'reply': response.choices[0].message.content})
+        response = model.generate_content(user_message)
+        return jsonify({'reply': response.text})
     except Exception as e:
         print("Chat error:", e)
         return jsonify({'error': 'Could not connect to AI server.'}), 500
@@ -237,18 +232,12 @@ def summary():
             prompt = f"The user just finished a 25-minute focus session and successfully completed these tasks: {tasks_str}. Write a short, calm congratulatory message addressing these specific achievements."
         else:
             prompt = "The user just finished a 25-minute focus session, but didn't check off any tasks. Write a short, encouraging message congratulating them on completing the focus block itself and boosting their stamina."
-
-        response = client.chat.completions.create(
-            model="gemini-1.5-flash-latest",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a study partner. Give a calm, simple congratulations message. Mention the completed achievements explicitly if provided. Keep it brief and under 30 words total."
-                },
-                {"role": "user", "content": prompt}
-            ]
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction="You are a study partner. Give a calm, simple congratulations message. Mention the completed achievements explicitly if provided. Keep it brief and under 30 words total."
         )
-        return jsonify({'summary': response.choices[0].message.content})
+        response = model.generate_content(prompt)
+        return jsonify({'summary': response.text})
     except Exception as e:
         print("Summary error:", e)
         return jsonify({'summary': "Exceptional focus out there! Take a well-deserved break ☕︎"})
