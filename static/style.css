@@ -518,3 +518,71 @@ button {
     0% { border-color: rgba(255, 240, 195, 0.2); }
     100% { border-color: rgba(255, 240, 195, 0.5); }
 }
+
+/* ── Clerk Auth Screen ── */
+#auth-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+    color: #fff0c3;
+    font-family: "Jersey 10", sans-serif;
+}
+
+#auth-screen h1 {
+    font-size: 3rem;
+    letter-spacing: 5px;
+    margin-bottom: 0.5rem;
+}
+
+#auth-screen p {
+    margin-bottom: 2rem;
+    opacity: 0.6;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+}
+
+#clerk-sign-in-container {
+    min-width: 320px;
+}
+
+/* ── User bar (top right when logged in) ── */
+#user-bar {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#user-bar span {
+    font-family: "Jersey 10", sans-serif;
+    color: #fff0c3;
+    font-size: 1.1rem;
+    opacity: 0.8;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+
+#sign-out-btn {
+    font-family: "Jersey 10", sans-serif;
+    background: rgba(75, 53, 26, 0.85);
+    border: 1px solid rgba(255, 240, 195, 0.3);
+    color: #fff0c3;
+    padding: 4px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    transition: background 0.2s;
+}
+
+#sign-out-btn:hover {
+    background: rgba(86, 107, 12, 0.6);
+}
