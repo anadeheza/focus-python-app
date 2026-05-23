@@ -19,9 +19,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-with app.app_context():
-    db.create_all()
-    
 API_KEY = os.environ.get("GEMINI_API_KEY")
 client = OpenAI(
     api_key=API_KEY,
@@ -107,6 +104,9 @@ class UserSettings(db.Model):
     volume_rain = db.Column(db.Float, default=0.0)
     volume_cafe = db.Column(db.Float, default=0.0)
     lofi_enabled = db.Column(db.Boolean, default=False)
+
+with app.app_context():
+    db.create_all()
 
 
 # --------------- RUTAS API ---------------
@@ -215,7 +215,7 @@ def chat():
             return jsonify({'error': 'Message is empty'}), 400
 
         response = client.chat.completions.create(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             messages=[
                 {"role": "system", "content": "You are a helpful, concise AI study and work assistant inside a focus timer app. Give actionable, clear, and encouraging advice for studying, coding, or managing tasks."},
                 {"role": "user", "content": user_message}
@@ -239,7 +239,7 @@ def summary():
             prompt = "The user just finished a 25-minute focus session, but didn't check off any tasks. Write a short, encouraging message congratulating them on completing the focus block itself and boosting their stamina."
 
         response = client.chat.completions.create(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             messages=[
                 {
                     "role": "system",
