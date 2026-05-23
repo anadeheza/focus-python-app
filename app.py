@@ -4,9 +4,7 @@ from openai import OpenAI
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import datetime
-from dotenv import load_dotenv
 
-load_dotenv()
 
 app = Flask(__name__)
 
