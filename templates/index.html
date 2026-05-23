@@ -5,10 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus time</title>
 
-    <script>
-        window.__clerk_publishable_key = "pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA";
+    <script
+        async
+        crossorigin="anonymous"
+        data-clerk-publishable-key="pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA"
+        src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+        onload="window.dispatchEvent(new Event('clerk-loaded'))">
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -131,10 +135,10 @@
         const bgMusic = document.getElementById('bg-music');
         const bellMusic = document.getElementById('bell-music');
 
-        // ── Clerk auth ──────────────────────────────────────────
         async function initClerk() {
-            const clerk = new window.Clerk("pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA");
-            await clerk.load();
+            await window.Clerk.load({
+                publishableKey: "pk_test_ZHJpdmVuLWpvZXktNDguY2xlcmsuYWNjb3VudHMuZGV2JA"
+            });
 
             const authScreen = document.getElementById('auth-screen');
             const userBar    = document.getElementById('user-bar');
@@ -146,24 +150,23 @@
                 userEmail.textContent = user.primaryEmailAddress?.emailAddress || '';
             }
 
-            if (clerk.user) {
-                showApp(clerk.user);
+            if (window.Clerk.user) {
+                showApp(window.Clerk.user);
             } else {
                 authScreen.style.display = 'flex';
-                clerk.mountSignIn(document.getElementById('clerk-sign-in-container'));
-                clerk.addListener(({ user }) => {
+                window.Clerk.mountSignIn(document.getElementById('clerk-sign-in-container'));
+                window.Clerk.addListener(({ user }) => {
                     if (user) showApp(user);
                 });
             }
 
             document.getElementById('sign-out-btn').addEventListener('click', async () => {
-                await clerk.signOut();
+                await window.Clerk.signOut();
                 location.reload();
             });
         }
 
-        window.addEventListener('load', initClerk);
-        // ────────────────────────────────────────────────────────
+        window.addEventListener('clerk-loaded', initClerk);
 
         window.addEventListener('keydown', function(event) {
             if(event.key === 'Enter' || event.keyCode === 13) {
