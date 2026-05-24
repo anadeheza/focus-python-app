@@ -72,8 +72,8 @@ body {
     width: 100vw; 
     height: 100vh;
     z-index: -1;
-    object-fit: cover; /* This makes sure the video scales gracefully without stretching */
-    pointer-events: none; /* Prevents accidental dragging/clicking on the background video */
+    object-fit: cover; 
+    pointer-events: none; 
 }
 
 .container {

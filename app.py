@@ -28,7 +28,6 @@ client_ai = genai.Client(api_key=API_KEY)
 CLERK_SECRET_KEY = os.environ.get("CLERK_SECRET_KEY")
 CLERK_JWKS_URL = "https://api.clerk.com/v1/jwks"
 
-# Cache simple para las JWKS (evita pedir las claves en cada request)
 _jwks_cache = None
 
 def get_clerk_public_keys():
@@ -61,7 +60,7 @@ def get_clerk_user_id():
         header = jwt.get_unverified_header(token)
         key = public_keys.get(header.get("kid"))
         if not key:
-            # Si no está en cache, limpiar cache y reintentar una vez
+
             global _jwks_cache
             _jwks_cache = None
             public_keys = get_clerk_public_keys()
@@ -80,7 +79,6 @@ def get_clerk_user_id():
         return None
 
 
-# --------------- MODELOS ---------------
 
 class FocusSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -108,8 +106,6 @@ class UserSettings(db.Model):
 with app.app_context():
     db.create_all()
 
-
-# --------------- RUTAS API ---------------
 
 @app.route('/api/sessions', methods=['POST'])
 def save_session():
@@ -191,7 +187,7 @@ def preferences():
             settings.lofi_enabled = data['lofi_enabled']
         db.session.commit()
         return jsonify({'message': 'Saved'})
-    # GET
+
     if not settings:
         return jsonify({'theme': 'chimney.mp4', 'volume_rain': 0.0, 'volume_cafe': 0.0, 'lofi_enabled': False})
     return jsonify({
